@@ -1,0 +1,46 @@
+---
+title: "Homework1"
+author: "Xueying Liu"
+date: "8/28/2020"
+output: pdf_document
+---
+
+# Problem 2
+## Part A
+
+```{r}
+library(knitr)
+knitr::kable(c("R","Python","SAS"),col.names = "3 Things I Want to Learn")
+```
+
+## Part B
+Bernoulli distribution(p):$$P(X=x|p)=p^x(1-p)^{1-x}; \;\; x=0,1;\;0<=p<=1.$$
+Binomial distribution(n,p):$$P(X=x|n,p)={n \choose x}p^x(1-p)^{n-x}; \;\;x=0,1,2,...,n; \;0<=p<=1.$$
+Poisson distribution($\lambda$):$$P(X=x|\lambda)=\frac{e^{-\lambda}\lambda^x}{x!}; \;\;x=0,1,...; \;0<=\lambda<\infty.$$
+
+# Problem 3
+## Steps in performing reproducible research:
+$Step1$: For every result, keep track of how it was produced, record every involved steps.
+Challenges:Sometimes we just try some possible methods, manually recording each step can take a lot of works.
+
+$Step2$: Archive the exact versions of all external programs used.
+Challenges:Remember to note the exact names and versions of the main programs you use.
+
+$Step3$: Use version control system to track evolution of codes and help the exact reproduction of results.
+
+$Step4$: Record all intermediate result,  randomness and raw data behinds plots. Connect textual statements to underlying results.
+Challenges: It may be hard to locate the exact result underlying and supporting the statement from a large pool of different analyses with various versions.
+
+$Step5$: Provide public access to your codes and results.
+Challenges: Be prepared to respond to any requests for further data or methodology details by peers.
+
+# Problem 4
+We will use the cars dataset in the R and plot a scatter plot and a histogram of it.
+```{r}
+library(ggplot2)
+ggplot(data = cars,mapping = aes(x=dist, y=speed))+
+  geom_point(color="blue")
+ggplot(data=cars,aes(x=dist))+
+  geom_histogram(color="black",fill="white", bins=50)
+```
+
