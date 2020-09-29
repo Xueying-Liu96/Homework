@@ -1,0 +1,246 @@
+---
+title: "HW3-xliu96"
+author: "Xueying Liu"
+date: "9/27/2020"
+output: pdf_document
+---
+```{r message=FALSE, warning=FALSE}
+library(knitr)
+library(ggplot2)
+library(Deriv)
+library(microbenchmark)
+library(stats)
+library(dplyr)
+```
+
+# Problem 3
+Although I understand the importance of programming style, I do not know what's rule to follow before.
+There are a few points I am inspired:
+\begin{itemize}
+  \item strive for names that are concise and meaningful
+  \item strive to limit code to 80 characters per line
+  \item use explicit returns with $return()$ function
+\end{itemize}
+
+# Problem 5
+## a
+```{r load data}
+HW3_data=readRDS("HW3_data.rds")
+```
+Create a function to get a summary statistics:
+```{r summary_function}
+data_summary <- function(x){
+  # calculate the mean of col1
+  mean1 <- mean(x[,1])
+  # calculate the mean of col2
+  mean2 <- mean(x[,2])
+  # statdard dev of col1
+  sd1 <- sd(x[,1])
+  # standard dev of col2
+  sd2 <- sd(x[,2])
+  # correlation between col1 and 2
+  corr <- cor(x[,1],x[,2])
+  return(c(mean1,mean2,sd1,sd2,corr))
+}
+```
+Loop through the observers:
+```{r }
+n=13
+observer_summary=matrix(NA,nrow=n,ncol=5)
+for(i in 1:n){
+  observer=data_summary(HW3_data[HW3_data$Observer==i,2:3])
+  observer_summary[i,] =observer
+}
+colnames(observer_summary)=c("mean of col1","mean of col2","sd of col1","sd of col2","correlation")
+row.names(observer_summary) = c(1,2,3,4,5,6,7,8,9,0,11,12,13)
+kable(observer_summary,caption = "Table of the means, sd, and correlation for each of the 13 Observers")
+```
+From the table, we can see that there is no significance difference in the mean, standard deviation of device 1 and device 2 and the correlation between device 1 and device 2 between observers. We can also verify this by the $group\_by()$ function in the $dplyr$ package.
+```{r}
+by_observer <- HW3_data %>% group_by(Observer)
+by_observer %>% summarise(
+  mean1 = mean(dev1),
+  mean2 = mean(dev2),
+  sd1 = sd(dev1),
+  sd2 = sd(dev2),
+  correlation = cor(dev1,dev2)
+)
+```
+## b
+Then we draw the boxplot of devices by observer:
+
+```{r echo=FALSE, fig.align='center'}
+par(mfrow=c(2,1))
+boxplot(dev1 ~ Observer,data = HW3_data, main = "boxplot for dev1")
+boxplot(dev2 ~ Observer,data = HW3_data, main = "boxplot for dev2")
+```
+From these plot we have new finding that although the mean and standard variance among different observers is similar, the median and interquartile range are different. For observations in device 1, the observer 12 has much higher median than others, and for observations in the device 2, the observer 7 has much lower median than others.
+
+## c
+We can also show these in the violin plot:
+
+```{r echo=FALSE, fig.align='center',fig.height=3.6}
+ggplot(data = HW3_data, aes(factor(Observer), dev1)) + ggtitle("violin plot for dev1") +
+  geom_violin()+geom_jitter(shape=16, position=position_jitter(0.1),col="blue")
+
+ggplot(data = HW3_data, aes(factor(Observer), dev2)) + ggtitle("violin plot for dev2") +
+  geom_violin()+geom_jitter(shape=16, position=position_jitter(0.1),col="blue")
+```
+Compared with boxplot and summary statistics, we can conclude that mean, standard deviation and median cannot indicate all the characters of data, especially when the distribution of data matters. We need more plots and statistics to explore the data.
+
+## d
+
+```{r fig.height=3.6}
+ggplot(HW3_data, aes(x=dev1,y=dev2)) + geom_point() + facet_wrap(Observer~.)
+```
+The plots of dev2 v.s. dev1 by observer indicate that these observations may just be the casual paints of observers, which do not have specific statistical meaning. Therefore, we should pay attention to the raw data and should get more information about the data collected instead of analyse it without knowing the background.
+
+# Problem 6
+In this problem, we create a function that uses Riemann sums to approximate the integral $f(x)=\int_0^1 e^{-\frac{x^2}{2}}$:
+```{r}
+f = function(x) exp(-(x)^2/2)
+riemann_sum <- function(d){
+  fsum <- 0
+  x <- 0
+  a <- 0
+  b <- 1
+  # number of rectangles under the curve
+  n <- (b-a)/d
+  for(i in 1:n){
+    fsum <- fsum + f(x)*d
+    x <- x + d
+    i <- i +1
+  }
+  return(fsum)
+}
+```
+Now use a looping construct (for or while) to loop through possible slice widths.
+```{r warning=FALSE}
+dseq <- seq(0,0.01,0.00001)
+#do not use dseq[1] since the width cannot be 0
+i <- 1
+value <- NULL
+while(i < 0.01/0.00001-1){
+  i <- i+1
+  value <- c(value,riemann_sum(dseq[i]))
+}
+riemann_width <- data.frame(cbind(dseq[-1],value)) 
+colnames(riemann_width) <- c("width","Riemann_Sum")
+```
+
+To obtain an answer within 1e-6 of the analytical solution:
+
+```{r}
+# getting the solution using r function
+integrate(f,0,1)
+analytic_solution = 0.8556244
+
+# obtain an answer within 1e-6 of the analytical solution
+for(i in 1:nrow(riemann_width)){
+  if(abs(riemann_width$Riemann_Sum[i] - analytic_solution) < 10^-6) {
+    print(riemann_width[i,])
+  }
+}
+```
+
+After we tried a sequence of width from 0 to 0.01 by 0.00001, we found that only when width equals $0.00003$ and $0.00012$ can we obtain an answer within 1e-6 of the analytical solution 0.8556244.
+
+# Problem 7
+To find solutions to $f(x) = 3^x - sin(x) + cos(5x)$ using Newton's method, we first show the plot of this function.
+```{r fig.height=3.3}
+fNewton <- function(x) 3^x - sin(x) + cos(5*x)
+curve(fNewton,from = -20, to = 2)
+abline(h=0,col="red")
+```
+From the plot we can see that the function is approximately periodic when x<0, therefore, we could only consider the solution between x=-5 and x=0.
+```{r fig.height=3.3}
+# starting from x=-2.5
+x <- -2.5
+iter <- 1
+itervalue <- x
+while(iter < 20){
+  x = x - fNewton(x)/Deriv(fNewton)(x)
+  iter <- iter + 1
+  itervalue <- c(itervalue,x)
+}
+x
+fNewton(x)
+itervalue
+curve(fNewton,from = -2.5, to = -4)
+abline(h=0,col="red")
+points(itervalue,fNewton(itervalue))
+```
+```{r}
+# starting from x=-3
+x <- -3
+iter <- 1
+itervalue <- x
+while(iter < 20){
+  x = x - fNewton(x)/Deriv(fNewton)(x)
+  iter <- iter + 1
+  itervalue <- c(itervalue,x)
+}
+x
+fNewton(x)
+itervalue
+curve(fNewton,from = -3, to = -2.5)
+abline(h=0,col="red")
+points(itervalue,fNewton(itervalue))
+```
+```{r}
+# starting from x=-3.5
+x <- -3.5
+iter <- 1
+itervalue <- x
+while(iter < 20){
+  x = x - fNewton(x)/Deriv(fNewton)(x)
+  iter <- iter + 1
+  itervalue <- c(itervalue,x)
+}
+x
+fNewton(x)
+itervalue
+curve(fNewton,from = -3, to = -4)
+abline(h=0,col="red")
+points(itervalue,fNewton(itervalue))
+```
+Therefore, we can find 3 solutions between -5 and 0, which are -3.930114, -2.887058 and -3.528723.
+
+# Problem 8
+
+```{r}
+X <- cbind(rep(1,100),rep.int(1:10,time=10))
+beta <- c(4,5)
+y <- X%*%beta + rnorm(100)
+ave=mean(y)
+```
+## a
+Calculating the SST using a for loop:
+```{r warning=FALSE}
+SSTloop <- function(y){
+SST <- 0
+for(i in 1:100){
+  SST <- SST + (y[i]-ave)^2
+}
+return(SST)
+}
+SSTloop(y)
+loop_time <- microbenchmark(SSTloop(y),times = 100, unit = "ms",control=list(warmup=0))
+loop_time
+```
+
+## b
+```{r warning=FALSE}
+SSTmatrix <- function(y){
+  return(sum((y-ave)^2))
+}
+SSTmatrix(y)
+matrix_time <- microbenchmark(SSTmatrix(y),times = 100, unit = "ms",control=list(warmup=0))
+matrix_time
+```
+```{r warning=FALSE,message=FALSE,fig.height=3.2,echo=FALSE}
+ggplot2::autoplot(loop_time)
+ggplot2::autoplot(matrix_time)
+```
+
+
